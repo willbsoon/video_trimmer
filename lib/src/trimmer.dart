@@ -302,5 +302,15 @@ class Trimmer {
   /// Clean up
   void dispose() {
     _controller.close();
+    /**
+     * 수정
+     * 메모리 누수 발견.
+     */
+      try{
+        _videoPlayerController?.dispose();
+      }catch(e,s){
+        print(e.toString());
+        debugPrintStack(stackTrace: s);
+      }
   }
 }
