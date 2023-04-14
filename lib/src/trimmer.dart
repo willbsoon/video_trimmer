@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter/ffmpeg_kit_config.dart';
-import 'package:ffmpeg_kit_flutter/return_code.dart';
+import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit_config.dart';
+import 'package:ffmpeg_kit_flutter_full_gpl/return_code.dart';
 import 'package:path/path.dart';
 
 import 'package:flutter/material.dart';
@@ -24,11 +24,16 @@ class Trimmer {
   // final FlutterFFmpeg _flutterFFmpeg = FFmpegKit();
 
   final StreamController<TrimmerEvent> _controller =
-      StreamController<TrimmerEvent>.broadcast();
+  StreamController<TrimmerEvent>.broadcast();
 
   VideoPlayerController? _videoPlayerController;
 
   VideoPlayerController? get videoPlayerController => _videoPlayerController;
+
+  final StreamController<double> progressStream = StreamController.broadcast();
+  bool _isEncoding = false;
+
+  get isEncoding => _isEncoding;
 
   File? currentVideoFile;
 
@@ -48,10 +53,8 @@ class Trimmer {
     }
   }
 
-  Future<String> _createFolderInAppDocDir(
-    String folderName,
-    StorageDir? storageDir,
-  ) async {
+  Future<String> _createFolderInAppDocDir(String folderName,
+      StorageDir? storageDir,) async {
     Directory? directory;
 
     if (storageDir == null) {
@@ -74,7 +77,7 @@ class Trimmer {
 
     // Directory + folder name
     final Directory directoryFolder =
-        Directory('${directory!.path}/$folderName/');
+    Directory('${directory!.path}/$folderName/');
 
     if (await directoryFolder.exists()) {
       // If folder already exists return path
@@ -84,7 +87,7 @@ class Trimmer {
       debugPrint('Creating');
       // If folder does not exists create folder and then return its path
       final Directory directoryNewFolder =
-          await directoryFolder.create(recursive: true);
+      await directoryFolder.create(recursive: true);
       return directoryNewFolder.path;
     }
   }
@@ -173,6 +176,7 @@ class Trimmer {
     String? videoFileName,
     StorageDir? storageDir,
   }) async {
+    _isEncoding = true;
     final String videoPath = currentVideoFile!.path;
     final String videoName = basename(videoPath).split('.')[0];
 
@@ -203,7 +207,7 @@ class Trimmer {
       videoFolderName,
       storageDir,
     ).whenComplete(
-      () => debugPrint("Retrieved Trimmer folder"),
+          () => debugPrint("Retrieved Trimmer folder"),
     );
 
     Duration startPoint = Duration(milliseconds: startValue.toInt());
@@ -223,7 +227,8 @@ class Trimmer {
     }
 
     String trimLengthCommand =
-        ' -ss $startPoint -i "$videoPath" -t ${endPoint - startPoint} -avoid_negative_ts make_zero ';
+        ' -ss $startPoint -i "$videoPath" -t ${endPoint -
+        startPoint} -avoid_negative_ts make_zero ';
 
     if (ffmpegCommand == null) {
       command = '$trimLengthCommand -c:a copy ';
@@ -236,7 +241,7 @@ class Trimmer {
         fpsGIF ??= 10;
         scaleGIF ??= 480;
         command =
-            '$trimLengthCommand -vf "fps=$fpsGIF,scale=$scaleGIF:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 ';
+        '$trimLengthCommand -vf "fps=$fpsGIF,scale=$scaleGIF:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 ';
       }
     } else {
       command = '$trimLengthCommand $ffmpegCommand ';
@@ -247,9 +252,14 @@ class Trimmer {
 
     command += '"$outputPath"';
 
+    /**
+     * 초기화
+     */
+    progressStream.add(0);
+
     FFmpegKit.executeAsync(command, (session) async {
       final state =
-          FFmpegKitConfig.sessionStateToString(await session.getState());
+      FFmpegKitConfig.sessionStateToString(await session.getState());
       final returnCode = await session.getReturnCode();
 
       debugPrint("FFmpeg process exited with state $state and rc $returnCode");
@@ -262,6 +272,27 @@ class Trimmer {
         debugPrint("FFmpeg processing failed.");
         debugPrint('Couldn\'t save the video');
         onSave(null);
+      }
+      _isEncoding = false;
+      progressStream.close();
+    }, (log) {
+      if (log.getMessage().contains('time=') &&
+          log.getMessage().contains('bitrate=')) {
+        final timeString =
+        log.getMessage().split('time=')[1].split('bitrate=')[0];
+        final timeArray = timeString.split(':');
+        final timeDuration = Duration(
+            seconds: (int.parse(timeArray[0]) * 3600 +
+                int.parse(timeArray[1]) * 60 +
+                int.parse(timeArray[2].split('.')[0])),
+            milliseconds: int.parse(timeArray[2].split('.')[1]));
+
+        print(
+            '${log.getLevel()} ----   ${startValue}-${endValue}  ${log
+                .getMessage()}');
+
+        progressStream.add(timeDuration.inMilliseconds /
+            videoPlayerController!.value.duration.inMilliseconds);
       }
     });
 
