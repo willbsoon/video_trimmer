@@ -24,7 +24,7 @@ class Trimmer {
   // final FlutterFFmpeg _flutterFFmpeg = FFmpegKit();
 
   final StreamController<TrimmerEvent> _controller =
-  StreamController<TrimmerEvent>.broadcast();
+      StreamController<TrimmerEvent>.broadcast();
 
   VideoPlayerController? _videoPlayerController;
 
@@ -53,8 +53,10 @@ class Trimmer {
     }
   }
 
-  Future<String> _createFolderInAppDocDir(String folderName,
-      StorageDir? storageDir,) async {
+  Future<String> _createFolderInAppDocDir(
+    String folderName,
+    StorageDir? storageDir,
+  ) async {
     Directory? directory;
 
     if (storageDir == null) {
@@ -77,7 +79,7 @@ class Trimmer {
 
     // Directory + folder name
     final Directory directoryFolder =
-    Directory('${directory!.path}/$folderName/');
+        Directory('${directory!.path}/$folderName/');
 
     if (await directoryFolder.exists()) {
       // If folder already exists return path
@@ -87,7 +89,7 @@ class Trimmer {
       debugPrint('Creating');
       // If folder does not exists create folder and then return its path
       final Directory directoryNewFolder =
-      await directoryFolder.create(recursive: true);
+          await directoryFolder.create(recursive: true);
       return directoryNewFolder.path;
     }
   }
@@ -207,7 +209,7 @@ class Trimmer {
       videoFolderName,
       storageDir,
     ).whenComplete(
-          () => debugPrint("Retrieved Trimmer folder"),
+      () => debugPrint("Retrieved Trimmer folder"),
     );
 
     Duration startPoint = Duration(milliseconds: startValue.toInt());
@@ -227,8 +229,7 @@ class Trimmer {
     }
 
     String trimLengthCommand =
-        ' -ss $startPoint -i "$videoPath" -t ${endPoint -
-        startPoint} -avoid_negative_ts make_zero ';
+        ' -ss $startPoint -i "$videoPath" -t ${endPoint - startPoint} -avoid_negative_ts make_zero ';
 
     if (ffmpegCommand == null) {
       command = '$trimLengthCommand -c:a copy ';
@@ -241,12 +242,13 @@ class Trimmer {
         fpsGIF ??= 10;
         scaleGIF ??= 480;
         command =
-        '$trimLengthCommand -vf "fps=$fpsGIF,scale=$scaleGIF:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 ';
+            '$trimLengthCommand -vf "fps=$fpsGIF,scale=$scaleGIF:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 ';
       }
     } else {
       command = '$trimLengthCommand $ffmpegCommand ';
       outputFormatString = customVideoFormat;
     }
+    debugPrint('\n\n\n FFMPEG COMMAND: $command');
 
     outputPath = '$path$videoFileName$outputFormatString';
 
@@ -259,9 +261,9 @@ class Trimmer {
 
     FFmpegKit.executeAsync(command, (session) async {
       final state =
-      FFmpegKitConfig.sessionStateToString(await session.getState());
+          FFmpegKitConfig.sessionStateToString(await session.getState());
       final returnCode = await session.getReturnCode();
-
+      debugPrint('\n--------   ${await session.getAllLogsAsString()}');
       debugPrint("FFmpeg process exited with state $state and rc $returnCode");
 
       if (ReturnCode.isSuccess(returnCode)) {
@@ -279,7 +281,7 @@ class Trimmer {
       if (log.getMessage().contains('time=') &&
           log.getMessage().contains('bitrate=')) {
         final timeString =
-        log.getMessage().split('time=')[1].split('bitrate=')[0];
+            log.getMessage().split('time=')[1].split('bitrate=')[0];
         final timeArray = timeString.split(':');
         final timeDuration = Duration(
             seconds: (int.parse(timeArray[0]) * 3600 +
@@ -288,8 +290,7 @@ class Trimmer {
             milliseconds: int.parse(timeArray[2].split('.')[1]));
 
         print(
-            '${log.getLevel()} ----   ${startValue}-${endValue}  ${log
-                .getMessage()}');
+            '${log.getLevel()} ----   ${startValue}-${endValue}  ${log.getMessage()}');
 
         progressStream.add(timeDuration.inMilliseconds /
             videoPlayerController!.value.duration.inMilliseconds);
@@ -337,11 +338,11 @@ class Trimmer {
      * 수정
      * 메모리 누수 발견.
      */
-      try{
-        _videoPlayerController?.dispose();
-      }catch(e,s){
-        print(e.toString());
-        debugPrintStack(stackTrace: s);
-      }
+    try {
+      _videoPlayerController?.dispose();
+    } catch (e, s) {
+      print(e.toString());
+      debugPrintStack(stackTrace: s);
+    }
   }
 }
