@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit_config.dart';
+import 'package:ffmpeg_kit_flutter_full_gpl/ffprobe_kit.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/return_code.dart';
 import 'package:path/path.dart';
 
@@ -39,6 +41,54 @@ class Trimmer {
 
   /// Listen to this stream to catch the events
   Stream<TrimmerEvent> get eventStream => _controller.stream;
+
+  Future<Map<String, dynamic>> getMediaInformation(
+      {required String videoPath}) async {
+    final Map<String, dynamic> map = {};
+    try {
+      final session = await FFprobeKit.getMediaInformation(videoPath);
+
+      final state =
+          FFmpegKitConfig.sessionStateToString(await session.getState());
+      final returnCode = await session.getReturnCode();
+      final output = await session.getOutput();
+      map['state'] = state; // CREATED RUNNING FAILED COMPLETED
+      map['returnCode'] = returnCode;
+
+      if (output != null) {
+        final Map outputMap = jsonDecode(output);
+        List keys = [
+          'codec_name',
+          'pix_fmt',
+          'color_space',
+          'color_transfer',
+          'color_primaries',
+          'r_frame_rate',
+          'duration',
+          'bit_rate',
+        ];
+        outputMap.forEach((key, value) {
+          if (value is List) {
+            value.forEach((element) {
+              if (element is Map) {
+                if (element.containsKey('codec_type') &&
+                    element['codec_type'] == 'video') {
+                  element.forEach((key, value) {
+                    if (keys.contains(key)) {
+                      map[key] = value;
+                    }
+                  });
+                }
+              }
+            });
+          }
+        });
+      }
+    } catch (e) {
+      map['state'] = 'ERROR';
+    }
+    return map;
+  }
 
   /// Loads a video using the path provided.
   ///
