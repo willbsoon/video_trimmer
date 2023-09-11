@@ -298,12 +298,11 @@ class Trimmer {
       command = '$trimLengthCommand $ffmpegCommand ';
       outputFormatString = customVideoFormat;
     }
-    debugPrint('\n\n\n FFMPEG COMMAND: $command');
-
     outputPath = '$path$videoFileName$outputFormatString';
 
     command += '"$outputPath"';
 
+    debugPrint('\n\n\n FFMPEG COMMAND: $command');
     /**
      * 초기화
      */
