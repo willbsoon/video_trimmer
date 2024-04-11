@@ -82,8 +82,13 @@ class _VideoViewerState extends State<VideoViewer> {
                             color: widget.borderColor,
                           ),
                         ),
-                        child: VideoPlayer(controller),
-                      )
+                        child: RotationTransition(
+                          turns: AlwaysStoppedAnimation(
+                              controller!.value.rotationCorrection / 360),
+                          child: VideoPlayer(
+                            controller!,
+                          ),
+                        ))
                     : const Center(
                         child: CircularProgressIndicator(
                           backgroundColor: Colors.white,
