@@ -92,7 +92,7 @@ class ScrollableThumbnailViewer extends StatelessWidget {
                               fit: fit,
                             ),
                           ),
-                          index < imageBytes.length
+                          index < imageBytes.length && imageBytes[index] != null
                               ? FadeInImage(
                                   placeholder: MemoryImage(kTransparentImage),
                                   image: MemoryImage(imageBytes[index]!),
